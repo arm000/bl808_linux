@@ -71,6 +71,7 @@
 ipcIntCallback *m0IpcIntCbfArra[GLB_CORE_ID_MAX - 1] = { NULL };
 ipcIntCallback *lpIpcIntCbfArra[GLB_CORE_ID_MAX - 1] = { NULL };
 ipcIntCallback *d0IpcIntCbfArra[GLB_CORE_ID_MAX - 1] = { NULL };
+void IPC_M0_IRQHandler(void);
 
 /*@} end of group IPC_Private_Variables */
 
@@ -114,9 +115,9 @@ void IPC_M0_Init(ipcIntCallback *onLPTriggerCallBack,
 
     IPC_M0_Int_Unmask_By_Word(0xffffffff);
 
-#ifndef BFLB_USE_HAL_DRIVER
+    //#ifndef BFLB_USE_HAL_DRIVER
     Interrupt_Handler_Register(IPC_M0_IRQn, IPC_M0_IRQHandler);
-#endif
+    //#endif
     CPU_Interrupt_Enable(IPC_M0_IRQn);
 }
 #endif
@@ -684,7 +685,7 @@ void IPC_Common_Interrupt_Handler(uint32_t irqStatus, ipcIntCallback *callBack[G
  * @return None
  *
 *******************************************************************************/
-#ifndef BFLB_USE_HAL_DRIVER
+//#ifndef BFLB_USE_HAL_DRIVER
 void IPC_M0_IRQHandler(void)
 {
     uint32_t irqStatus;
@@ -692,7 +693,7 @@ void IPC_M0_IRQHandler(void)
     IPC_Common_Interrupt_Handler(irqStatus, m0IpcIntCbfArra);
     IPC_M0_Clear_Int_By_Word(irqStatus);
 }
-#endif
+//#endif
 
 /****************************************************************************/ /**
  * @brief  LP IPC IRQ handler
