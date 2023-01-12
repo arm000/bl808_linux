@@ -107,6 +107,55 @@ static int delegate_traps(struct sbi_scratch *scratch, u32 hartid)
 	return 0;
 }
 
+static void dump_pmp(int n, unsigned char pmpcfg, unsigned long pmpaddr)
+{
+  int i;
+  static long int prev_addr = 0;
+  unsigned long int addr;
+  unsigned long int mask;
+  unsigned long int size;
+
+  sbi_printf("PMP%d: ", n);
+  mask = 0;
+  size = 4;
+  if ((pmpcfg & PMP_A) == PMP_A_NAPOT) {
+    for (i=0; i<64; i++) {
+      size <<= 1;
+      if ((pmpaddr & (1 << i)) == 0)
+	break;
+      mask = (mask << 1);
+      mask |= 1;
+    }
+  }
+
+  addr = (pmpaddr & ~mask) << 2;
+  if ((pmpcfg & PMP_A) == PMP_A_TOR) {
+    sbi_printf("0x%016lx-", prev_addr);
+    sbi_printf("0x%016lx ", addr);
+  } else {
+    sbi_printf("0x%016lx-", addr);
+    sbi_printf("0x%016lx ", addr + size-1);
+  }
+  sbi_printf("%s", (pmpcfg & PMP_L) ? "L" : ".");
+  sbi_printf("%s", (pmpcfg & PMP_R) ? "R" : ".");
+  sbi_printf("%s", (pmpcfg & PMP_W) ? "W" : ".");
+  sbi_printf("%s", (pmpcfg & PMP_X) ? "X" : ".");
+  if ((pmpcfg & PMP_A) == PMP_A_TOR)  
+    sbi_printf("(TOR)");
+  else if ((pmpcfg & PMP_A) == PMP_A_NA4)
+    sbi_printf("(NA4)");
+  else if ((pmpcfg & PMP_A) == PMP_A_NAPOT)
+    sbi_printf("(NAPOT)");
+  else
+    sbi_printf("(OFF)");
+
+  if ((pmpcfg & PMP_A) != PMP_A_TOR)  
+    sbi_printf("[%lu] ", size);
+  sbi_printf("\n");
+
+  prev_addr = addr + size;
+}
+
 void sbi_hart_delegation_dump(struct sbi_scratch *scratch)
 {
 #if __riscv_xlen == 32
@@ -115,6 +164,19 @@ void sbi_hart_delegation_dump(struct sbi_scratch *scratch)
 #else
 	sbi_printf("MIDELEG : 0x%016lx\n", csr_read(CSR_MIDELEG));
 	sbi_printf("MEDELEG : 0x%016lx\n", csr_read(CSR_MEDELEG));
+	{
+	  unsigned long pmpcfg0;
+	  pmpcfg0 = csr_read(CSR_PMPCFG0);
+	  sbi_printf("PMPCFG0 : 0x%016lx\n", pmpcfg0);
+	  dump_pmp(0, (pmpcfg0 >> (0*8)) & 0xff, csr_read(CSR_PMPADDR0));
+	  dump_pmp(1, (pmpcfg0 >> (1*8)) & 0xff, csr_read(CSR_PMPADDR1));
+	  dump_pmp(2, (pmpcfg0 >> (2*8)) & 0xff, csr_read(CSR_PMPADDR2));
+	  dump_pmp(3, (pmpcfg0 >> (3*8)) & 0xff, csr_read(CSR_PMPADDR3));
+	  dump_pmp(4, (pmpcfg0 >> (4*8)) & 0xff, csr_read(CSR_PMPADDR4));
+	  dump_pmp(5, (pmpcfg0 >> (5*8)) & 0xff, csr_read(CSR_PMPADDR5));
+	  dump_pmp(6, (pmpcfg0 >> (6*8)) & 0xff, csr_read(CSR_PMPADDR6));
+	  dump_pmp(7, (pmpcfg0 >> (7*8)) & 0xff, csr_read(CSR_PMPADDR7));
+	}
 #endif
 }
 
