@@ -640,7 +640,7 @@ void board_init(void)
 #if D0_DEBUG
     board_d0_init_jtag_gpio();
 #endif
-    uint32_t ret = 0;
+    int ret = 0;
     ret = uhs_psram_init();
     if (ret < 0) {
         while (1)
