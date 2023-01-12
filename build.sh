@@ -11,6 +11,10 @@ NEWLIB_ELF_CROSS_PREFIX=$SHELL_DIR/toolchain/elf_newlib_toolchain/bin/riscv64-un
 
 BUILD_TARGET=$1
 
+#LINUX_DIR=linux-5.10.4-808
+LINUX_DIR=../linux-5.10.4-808
+#LINUX_DIR=../linux-bl808
+
 if [[ ! -e $OUT_DIR ]]; then
     mkdir $OUT_DIR
 fi
@@ -19,22 +23,22 @@ build_linux()
 {
     echo " "
     echo "================ build linux kernel ================"
-    cd $SHELL_DIR/linux-5.10.4-808
-    if [ ! -f .config ]; then
-        cp c906.config .config
-    fi
+    cd $SHELL_DIR/$LINUX_DIR
+    make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX bl808_defconfig
     make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX Image -j$(nproc)
+    make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX dtbs -j$(nproc)
     echo " "
     echo "=========== high compression kernel image =========="
-    lz4 -9 -f $SHELL_DIR/linux-5.10.4-808/arch/riscv/boot/Image $SHELL_DIR/linux-5.10.4-808/arch/riscv/boot/Image.lz4
-    cp $SHELL_DIR/linux-5.10.4-808/arch/riscv/boot/Image.lz4 $OUT_DIR
+    lz4 -9 -f $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/Image $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/Image.lz4
+    cp $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/Image.lz4 $OUT_DIR
+    cp $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/dts/bouffalolab/bl808-sipeed-m1s.dtb $OUT_DIR
 }
 
 build_linux_config()
 {
     echo " "
     echo "============ build linux kernel config ============="
-    cd $SHELL_DIR/linux-5.10.4-808
+    cd $SHELL_DIR/$LINUX_DIR
     make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX menuconfig -j$(nproc)
 }
 
@@ -44,16 +48,6 @@ build_opensbi(){
     cd $SHELL_DIR/opensbi-0.6-808
     make PLATFORM=thead/c910 CROSS_COMPILE=$LINUX_CROSS_PREFIX -j$(nproc)
     cp $SHELL_DIR/opensbi-0.6-808/build/platform/thead/c910/firmware/fw_jump.bin $OUT_DIR
-}
-
-build_dtb()
-{
-    echo " "
-    echo "==================== build dtb ====================="
-
-    dtc -I dts -O dtb -o  $SHELL_DIR/bl808_dts/hw.dtb.5M $SHELL_DIR/bl808_dts/hw808c.dts
-    cp $SHELL_DIR/bl808_dts/hw.dtb.5M $OUT_DIR
-
 }
 
 build_low_load()
@@ -89,7 +83,6 @@ build_all()
 {
     build_opensbi
     build_linux
-    build_dtb
     build_low_load
     build_whole_bin
 }
@@ -101,7 +94,7 @@ clean_all()
     find ./out ! -name 'squashfs_test.img' ! -name 'merge_7_5Mbin.py' -type f -exec rm -f {} +
     echo " "
     echo "================ clean kernel ================"
-    cd $SHELL_DIR/linux-5.10.4-808
+    cd $SHELL_DIR/$LINUX_DIR
     make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX mrproper
     echo " "
     echo "================== clean opensbi ==================="
@@ -126,9 +119,6 @@ kernel_config)
     ;;
 opensbi)
     build_opensbi
-    ;;
-dtb)
-    build_dtb
     ;;
 low_load)
     build_low_load

@@ -28,6 +28,8 @@
 #include "bl808_psram_uhs.h"
 #include "bl808_glb.h"
 #include "bl808_gpio.h"
+#include "bl808_ipc.h"
+#include "sdh_reg.h"
 
 extern void unlz4(const void *aSource, void *aDestination, uint32_t FileLen);
 
@@ -135,6 +137,64 @@ void linux_load()
     // csi_dcache_clean();
 }
 
+#define SDH_GetIntStatus()       BL_RD_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS);
+#define SDH_GetIntEnableStatus() BL_RD_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS_INT_EN);
+#define SDH_ClearIntStatus(mask) BL_WR_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS, (mask));
+
+void SDH_MMC1_IRQHandler(void)
+{
+    uint32_t intFlag, intMask;
+
+    CPU_Interrupt_Disable(SDH_IRQn);
+    //    MSG("%s\r\n", __func__);
+
+    intFlag = SDH_GetIntStatus();
+    intMask = SDH_GetIntEnableStatus();
+    intFlag &= intMask;
+
+    //    MSG("Triggering D0\r\n");
+    IPC_M0_Trigger_D0(IPC_GRP_INT_SRC_BIT0);
+
+    //    SDH_ClearIntStatus(intFlag);
+    return;
+}
+
+#ifdef CPU_M0
+static void lp_ipc_handler(uint32_t src)
+{
+    MSG("%s: src: 0x%08x\r\n", __func__, src);
+}
+
+static void d0_ipc_handler(uint32_t src)
+{
+    CPU_Interrupt_Enable(SDH_IRQn);
+}
+#endif
+
+#ifdef CPU_M0
+static void dump_ipc(unsigned int base)
+{
+    MSG("base: 0x%08x\n", base);
+    MSG("CPU1 ISWR [0x%08x]: 0x%08x ",   base + IPC_CPU1_IPC_ISWR_OFFSET,  BL_RD_REG(base, IPC_CPU1_IPC_ISWR));
+    MSG("CPU1 IRSRR[0x%08x]: 0x%08x\n",  base + IPC_CPU1_IPC_IRSRR_OFFSET, BL_RD_REG(base, IPC_CPU1_IPC_IRSRR));
+    MSG("CPU1 ICR  [0x%08x]: 0x%08x ",   base + IPC_CPU1_IPC_ICR_OFFSET,   BL_RD_REG(base, IPC_CPU1_IPC_ICR));
+    MSG("CPU1 IUSR [0x%08x]: 0x%08x\n",  base + IPC_CPU1_IPC_IUSR_OFFSET,  BL_RD_REG(base, IPC_CPU1_IPC_IUSR));
+    MSG("CPU1 IUCR [0x%08x]: 0x%08x ",   base + IPC_CPU1_IPC_IUCR_OFFSET,  BL_RD_REG(base, IPC_CPU1_IPC_IUCR));
+    MSG("CPU1 ILSLR[0x%08x]: 0x%08x\n",  base + IPC_CPU1_IPC_ILSLR_OFFSET, BL_RD_REG(base, IPC_CPU1_IPC_ILSLR));
+    MSG("CPU1 ILSHR[0x%08x]: 0x%08x ",   base + IPC_CPU1_IPC_ILSHR_OFFSET, BL_RD_REG(base, IPC_CPU1_IPC_ILSHR));
+    MSG("CPU1 ISR  [0x%08x]: 0x%08x\n",  base + IPC_CPU1_IPC_ISR_OFFSET,   BL_RD_REG(base, IPC_CPU1_IPC_ISR));
+
+    MSG("CPU0 ISWR [0x%08x]: 0x%08x ",   base + IPC_CPU0_IPC_ISWR_OFFSET,  BL_RD_REG(base, IPC_CPU0_IPC_ISWR));
+    MSG("CPU0 IRSRR[0x%08x]: 0x%08x\n",  base + IPC_CPU0_IPC_IRSRR_OFFSET, BL_RD_REG(base, IPC_CPU0_IPC_IRSRR));
+    MSG("CPU0 ICR  [0x%08x]: 0x%08x ",   base + IPC_CPU0_IPC_ICR_OFFSET,   BL_RD_REG(base, IPC_CPU0_IPC_ICR));
+    MSG("CPU0 IUSR [0x%08x]: 0x%08x\n",  base + IPC_CPU0_IPC_IUSR_OFFSET,  BL_RD_REG(base, IPC_CPU0_IPC_IUSR));
+    MSG("CPU0 IUCR [0x%08x]: 0x%08x ",   base + IPC_CPU0_IPC_IUCR_OFFSET,  BL_RD_REG(base, IPC_CPU0_IPC_IUCR));
+    MSG("CPU0 ILSLR[0x%08x]: 0x%08x\n",  base + IPC_CPU0_IPC_ILSLR_OFFSET, BL_RD_REG(base, IPC_CPU0_IPC_ILSLR));
+    MSG("CPU0 ILSHR[0x%08x]: 0x%08x ",   base + IPC_CPU0_IPC_ILSHR_OFFSET, BL_RD_REG(base, IPC_CPU0_IPC_ILSHR));
+    MSG("CPU0 ISR  [0x%08x]: 0x%08x\n",  base + IPC_CPU0_IPC_ISR_OFFSET,   BL_RD_REG(base, IPC_CPU0_IPC_ISR));
+}
+#endif
+
 int main(void)
 {
     bflb_platform_init(0);
@@ -146,13 +206,37 @@ int main(void)
     MSG("psram clk init ok!\r\n");
     // MSG("m0 main! size_t:%d\r\n", sizeof(size_t));
 
+    IPC_M0_Init(d0_ipc_handler, lp_ipc_handler);
+
+    MSG("registering SDH interrupt handler\r\n");
+    Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
+    CPU_Interrupt_Enable(SDH_IRQn);
+    {
+      uint32_t intFlag;
+      intFlag = SDH_GetIntStatus();
+      MSG("int status: 0x%x\n", intFlag);
+    }
+
     csi_dcache_disable();
 #ifdef DUALCORE
     BL_WR_WORD(IPC_SYNC_ADDR1, IPC_SYNC_FLAG);
     BL_WR_WORD(IPC_SYNC_ADDR2, IPC_SYNC_FLAG);
     L1C_DCache_Clean_By_Addr(IPC_SYNC_ADDR1, 8);
 #endif
+
     while (1) {
+      {
+	static int x = 0;
+	if ((x++ % 999999999) == 0) {
+	  {
+              //dump_ipc(IPC0_BASE);
+              //dump_ipc(IPC1_BASE);
+              uint32_t intFlag;
+              intFlag = SDH_GetIntStatus();
+              MSG("int status: 0x%x\n", intFlag);
+	  }
+	}
+      }
 #ifdef __riscv_muldiv
         int dummy;
         /* In lieu of a halt instruction, induce a long-latency stall. */
