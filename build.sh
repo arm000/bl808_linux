@@ -12,8 +12,9 @@ NEWLIB_ELF_CROSS_PREFIX=$SHELL_DIR/toolchain/elf_newlib_toolchain/bin/riscv64-un
 BUILD_TARGET=$1
 
 #LINUX_DIR=linux-5.10.4-808
-LINUX_DIR=../linux-5.10.4-808
+#LINUX_DIR=../linux-5.10.4-808
 #LINUX_DIR=../linux-bl808
+LINUX_DIR=../linux_alexhorner
 
 if [[ ! -e $OUT_DIR ]]; then
     mkdir $OUT_DIR
