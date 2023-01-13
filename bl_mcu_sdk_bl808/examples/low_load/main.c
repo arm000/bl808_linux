@@ -141,12 +141,38 @@ void linux_load()
 #define SDH_GetIntEnableStatus() BL_RD_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS_INT_EN);
 #define SDH_ClearIntStatus(mask) BL_WR_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS, (mask));
 
+#ifdef CPU_M0
+/* this must be kept in sync with Linux include/dt-bindings/mailbox/bflb-ipc.h */
+/* Peripheral device ID */
+#define BFLB_IPC_DEVICE_SDHCI           0
+#define BFLB_IPC_DEVICE_USB             1
+
+/* mapping of device number to M0 interrupt line */
+static uint32_t ipc_irqs[32] = {
+    [BFLB_IPC_DEVICE_SDHCI] = SDH_IRQn,
+    [BFLB_IPC_DEVICE_USB]   = USB_IRQn,
+    0,
+};
+
+static void Send_IPC_IRQ(int device)
+{
+    MSG("%s: device = %d, disabling line = %u\n", __func__, device, ipc_irqs[device]);
+    CPU_Interrupt_Disable(ipc_irqs[device]);
+    BL_WR_REG(IPC2_BASE, IPC_CPU1_IPC_ISWR, (1 << device));
+}
+
+#if 0
+void SDH_MMC1_IRQHandler(void)
+{
+    MSG("%s\n", __func__);
+    Send_IPC_IRQ(BFLB_IPC_DEVICE_SDHCI);
+}
+#else
 void SDH_MMC1_IRQHandler(void)
 {
     uint32_t intFlag, intMask;
 
     CPU_Interrupt_Disable(SDH_IRQn);
-    //    MSG("%s\r\n", __func__);
 
     intFlag = SDH_GetIntStatus();
     intMask = SDH_GetIntEnableStatus();
@@ -158,20 +184,26 @@ void SDH_MMC1_IRQHandler(void)
     //    SDH_ClearIntStatus(intFlag);
     return;
 }
-
-#ifdef CPU_M0
-static void lp_ipc_handler(uint32_t src)
-{
-    MSG("%s: src: 0x%08x\r\n", __func__, src);
-}
-
-static void d0_ipc_handler(uint32_t src)
-{
-    CPU_Interrupt_Enable(SDH_IRQn);
-}
 #endif
 
-#ifdef CPU_M0
+static void IPC_M0_IRQHandler(void)
+{
+    int i;
+    uint32_t irqStatus = IPC_M0_Get_Int_Raw_Status();
+
+    MSG("%s: irqStatus: 0x%08x\n", __func__, irqStatus);
+
+    for (i = 0; i < sizeof(irqStatus) * 8; i++) {
+        if (irqStatus & (1 << i)) {
+            MSG("%s: device %d, enabling line %u\n", __func__, i, ipc_irqs[i]);
+            CPU_Interrupt_Enable(ipc_irqs[i]);
+        }
+    }
+
+    IPC_M0_Clear_Int_By_Word(irqStatus);
+}
+
+#if 0
 static void dump_ipc(unsigned int base)
 {
     MSG("base: 0x%08x\n", base);
@@ -194,6 +226,7 @@ static void dump_ipc(unsigned int base)
     MSG("CPU0 ISR  [0x%08x]: 0x%08x\n",  base + IPC_CPU0_IPC_ISR_OFFSET,   BL_RD_REG(base, IPC_CPU0_IPC_ISR));
 }
 #endif
+#endif
 
 int main(void)
 {
@@ -206,7 +239,10 @@ int main(void)
     MSG("psram clk init ok!\r\n");
     // MSG("m0 main! size_t:%d\r\n", sizeof(size_t));
 
-    IPC_M0_Init(d0_ipc_handler, lp_ipc_handler);
+    MSG("registering IPC interrupt handler\r\n");
+    Interrupt_Handler_Register(IPC_M0_IRQn, IPC_M0_IRQHandler);
+    IPC_M0_Int_Unmask_By_Word(0xffffffff);
+    CPU_Interrupt_Enable(IPC_M0_IRQn);
 
     MSG("registering SDH interrupt handler\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
