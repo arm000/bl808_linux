@@ -576,6 +576,7 @@ void bl_show_info(void)
 
     MSG("            lp clock:%dM\r\n", Clock_System_Clock_Get(BL_SYSTEM_CLOCK_LP_CLK) / 1000000);
     MSG("         PSRAM clock:%dM\r\n", Clock_Peripheral_Clock_Get(BL_PERIPHERAL_CLOCK_PSRAMA) / 1000000);
+    MSG("           SDH clock:%dM\r\n", Clock_Peripheral_Clock_Get(BL_PERIPHERAL_CLOCK_SDH) / 1000000);
     MSG("UART SIG7-SIG0 :%08x\r\n", BL_RD_REG(GLB_BASE, GLB_UART_CFG1));
     MSG("UART SIG11-SIG8 :%04x\r\n", BL_RD_REG(GLB_BASE, GLB_UART_CFG2));
     MSG("#####################################################\r\n");
