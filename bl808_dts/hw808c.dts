@@ -98,7 +98,7 @@
 
 	chosen {
 		/* bootargs = "console=ttyS0,2000000 loglevel=8 earlyprintk earlycon=sbi root=/dev/ram0 initrd=0x52000000"; */
-		bootargs = "console=ttyS0,2000000 loglevel=8 earlyprintk earlycon=sbi root=/dev/mtdblock0 ro rootfstype=squashfs";
+		bootargs = "console=ttyS0,2000000 loglevel=8 earlycon=sbi root=/dev/mtdblock0 ro rootfstype=squashfs";
 		linux,initrd-start = <0x0 0x52000000>;
 		linux,initrd-end = <0x0 0x52941784>;
 		stdout-path = "/soc/serial@30002000:2000000";
