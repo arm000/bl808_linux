@@ -208,8 +208,6 @@ int main(void)
 
     IPC_M0_Init(d0_ipc_handler, lp_ipc_handler);
 
-    bl_show_info();
-
     MSG("registering SDH interrupt handler\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
