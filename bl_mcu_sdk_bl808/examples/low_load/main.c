@@ -211,11 +211,6 @@ int main(void)
     MSG("registering SDH interrupt handler\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
-    {
-      uint32_t intFlag;
-      intFlag = SDH_GetIntStatus();
-      MSG("int status: 0x%x\n", intFlag);
-    }
 
     csi_dcache_disable();
 #ifdef DUALCORE
@@ -231,9 +226,7 @@ int main(void)
 	  {
               //dump_ipc(IPC0_BASE);
               //dump_ipc(IPC1_BASE);
-              uint32_t intFlag;
-              intFlag = SDH_GetIntStatus();
-              MSG("int status: 0x%x\n", intFlag);
+              MSG(".\n");
 	  }
 	}
       }
