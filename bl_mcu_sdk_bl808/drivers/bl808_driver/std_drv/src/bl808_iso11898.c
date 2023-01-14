@@ -76,7 +76,7 @@ void ISO11898_Init(void)
     ISO11898_Sample_Parameter_Set(1, 8, 5);
 
 #ifndef BFLB_USE_HAL_DRIVER
-    Interrupt_Handler_Register(UART2_IRQn, ISO11898_IRQHandler);
+    //Interrupt_Handler_Register(UART2_IRQn, ISO11898_IRQHandler);
 #endif
 }
 

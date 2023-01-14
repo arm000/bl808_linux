@@ -159,6 +159,13 @@ void SDH_MMC1_IRQHandler(void)
     return;
 }
 
+void UART2_IRQHandler(void)
+{
+    CPU_Interrupt_Disable(UART2_IRQn);
+    IPC_M0_Trigger_D0(IPC_GRP_INT_SRC_BIT1);
+    return;
+}
+
 #ifdef CPU_M0
 static void lp_ipc_handler(uint32_t src)
 {
@@ -167,7 +174,24 @@ static void lp_ipc_handler(uint32_t src)
 
 static void d0_ipc_handler(uint32_t src)
 {
-    CPU_Interrupt_Enable(SDH_IRQn);
+    int bit;
+
+    for (bit = 0; bit < 32; bit++)
+    {
+        if ((src >> bit) & 1)
+        {
+            switch (bit)
+            {
+                case 0:
+                    CPU_Interrupt_Enable(SDH_IRQn);
+                    break;
+
+                case 1:
+                    CPU_Interrupt_Enable(UART2_IRQn);
+                    break;
+            }
+        }
+    }
 }
 #endif
 
@@ -208,13 +232,15 @@ int main(void)
 
     IPC_M0_Init(d0_ipc_handler, lp_ipc_handler);
 
-    MSG("registering SDH interrupt handler\r\n");
+    MSG("registering SDH, UART2 interrupt handler\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
+    Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
+    CPU_Interrupt_Enable(UART2_IRQn);
     {
       uint32_t intFlag;
       intFlag = SDH_GetIntStatus();
-      MSG("int status: 0x%x\n", intFlag);
+      MSG("SDH int status: 0x%x\n", intFlag);
     }
 
     csi_dcache_disable();
@@ -233,7 +259,7 @@ int main(void)
               //dump_ipc(IPC1_BASE);
               uint32_t intFlag;
               intFlag = SDH_GetIntStatus();
-              MSG("int status: 0x%x\n", intFlag);
+              MSG("SDH int status: 0x%x\n", intFlag);
 	  }
 	}
       }
