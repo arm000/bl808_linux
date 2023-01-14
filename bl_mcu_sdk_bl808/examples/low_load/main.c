@@ -154,7 +154,7 @@ void SDH_MMC1_IRQHandler(void)
     intFlag &= intMask;
 
     //    MSG("Triggering D0\r\n");
-    IPC_M0_Trigger_D0(IPC_GRP_INT_SRC_BIT0);
+    IPC_M0_Trigger_D0(BFLB_IPC_DEVICE_SDHCI);
 
     //    SDH_ClearIntStatus(intFlag);
     return;
@@ -163,7 +163,7 @@ void SDH_MMC1_IRQHandler(void)
 void UART2_IRQHandler(void)
 {
     CPU_Interrupt_Disable(UART2_IRQn);
-    IPC_M0_Trigger_D0(IPC_GRP_INT_SRC_BIT1);
+    IPC_M0_Trigger_D0(BFLB_IPC_DEVICE_UART2);
     return;
 }
 
@@ -183,7 +183,7 @@ static void d0_ipc_handler(uint32_t src)
 {
     for (int bit = 0; src != 0 && bit < 32; bit++)
     {
-        if ((src >> bit) & 1) CPU_Interrupt_Enable(ipc_irqs[bit]);
+        if (((src >> bit) & 1) && ipc_irqs[bit] != 0) CPU_Interrupt_Enable(ipc_irqs[bit]);
 
         src &= ~(1 << bit);
     }
