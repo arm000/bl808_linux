@@ -12,8 +12,9 @@ NEWLIB_ELF_CROSS_PREFIX=$SHELL_DIR/toolchain/elf_newlib_toolchain/bin/riscv64-un
 BUILD_TARGET=$1
 
 #LINUX_DIR=linux-5.10.4-808
-LINUX_DIR=../linux-5.10.4-808
+#LINUX_DIR=../linux-5.10.4-808
 #LINUX_DIR=../linux-bl808
+LINUX_DIR=../linux_alexhorner
 
 if [[ ! -e $OUT_DIR ]]; then
     mkdir $OUT_DIR
@@ -31,7 +32,7 @@ build_linux()
     echo "=========== high compression kernel image =========="
     lz4 -9 -f $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/Image $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/Image.lz4
     cp $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/Image.lz4 $OUT_DIR
-    cp $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/dts/bouffalolab/bl808-sipeed-m1s.dtb $OUT_DIR
+    cp $SHELL_DIR/$LINUX_DIR/arch/riscv/boot/dts/bouffalolab/bl808-pine64-ox64.dtb $OUT_DIR
 }
 
 build_linux_config()

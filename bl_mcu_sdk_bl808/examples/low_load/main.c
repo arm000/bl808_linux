@@ -30,6 +30,7 @@
 #include "bl808_gpio.h"
 #include "bl808_ipc.h"
 #include "sdh_reg.h"
+#include "bflb_ipc.h"
 
 extern void unlz4(const void *aSource, void *aDestination, uint32_t FileLen);
 
@@ -153,9 +154,16 @@ void SDH_MMC1_IRQHandler(void)
     intFlag &= intMask;
 
     //    MSG("Triggering D0\r\n");
-    IPC_M0_Trigger_D0(IPC_GRP_INT_SRC_BIT0);
+    IPC_M0_Trigger_D0(BFLB_IPC_DEVICE_SDHCI);
 
     //    SDH_ClearIntStatus(intFlag);
+    return;
+}
+
+void UART2_IRQHandler(void)
+{
+    CPU_Interrupt_Disable(UART2_IRQn);
+    IPC_M0_Trigger_D0(BFLB_IPC_DEVICE_UART2);
     return;
 }
 
@@ -165,9 +173,20 @@ static void lp_ipc_handler(uint32_t src)
     MSG("%s: src: 0x%08x\r\n", __func__, src);
 }
 
+static uint32_t ipc_irqs[32] = {
+    [BFLB_IPC_DEVICE_SDHCI] = SDH_IRQn,
+    [BFLB_IPC_DEVICE_UART2] = UART2_IRQn,
+    0,
+};
+
 static void d0_ipc_handler(uint32_t src)
 {
-    CPU_Interrupt_Enable(SDH_IRQn);
+    for (int bit = 0; src != 0 && bit < 32; bit++)
+    {
+        if (((src >> bit) & 1) && ipc_irqs[bit] != 0) CPU_Interrupt_Enable(ipc_irqs[bit]);
+
+        src &= ~(1 << bit);
+    }
 }
 #endif
 
@@ -208,13 +227,15 @@ int main(void)
 
     IPC_M0_Init(d0_ipc_handler, lp_ipc_handler);
 
-    MSG("registering SDH interrupt handler\r\n");
+    MSG("registering SDH, UART2 interrupt handler\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
+    Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
+    CPU_Interrupt_Enable(UART2_IRQn);
     {
       uint32_t intFlag;
       intFlag = SDH_GetIntStatus();
-      MSG("int status: 0x%x\n", intFlag);
+      MSG("SDH int status: 0x%x\n", intFlag);
     }
 
     csi_dcache_disable();
@@ -233,7 +254,7 @@ int main(void)
               //dump_ipc(IPC1_BASE);
               uint32_t intFlag;
               intFlag = SDH_GetIntStatus();
-              MSG("int status: 0x%x\n", intFlag);
+              MSG("SDH int status: 0x%x\n", intFlag);
 	  }
 	}
       }
