@@ -30,6 +30,7 @@
 #include "bl808_gpio.h"
 #include "bl808_ipc.h"
 #include "sdh_reg.h"
+#include "bflb_ipc.h"
 
 extern void unlz4(const void *aSource, void *aDestination, uint32_t FileLen);
 
@@ -137,34 +138,28 @@ void linux_load()
     // csi_dcache_clean();
 }
 
-#define SDH_GetIntStatus()       BL_RD_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS);
-#define SDH_GetIntEnableStatus() BL_RD_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS_INT_EN);
-#define SDH_ClearIntStatus(mask) BL_WR_REG(SDH_BASE, SDH_SD_NORMAL_INT_STATUS, (mask));
-
 #ifdef CPU_M0
-/* this must be kept in sync with Linux include/dt-bindings/mailbox/bflb-ipc.h */
-/* Peripheral device ID */
-#define BFLB_IPC_DEVICE_SDHCI           0
-#define BFLB_IPC_DEVICE_USB             1
 
-/* mapping of device number to M0 interrupt line */
 static uint32_t ipc_irqs[32] = {
     [BFLB_IPC_DEVICE_SDHCI] = SDH_IRQn,
-    [BFLB_IPC_DEVICE_USB]   = USB_IRQn,
+    [BFLB_IPC_DEVICE_UART2] = UART2_IRQn,
     0,
 };
 
 static void Send_IPC_IRQ(int device)
 {
-    MSG("%s: device = %d, disabling line = %u\n", __func__, device, ipc_irqs[device]);
     CPU_Interrupt_Disable(ipc_irqs[device]);
     BL_WR_REG(IPC2_BASE, IPC_CPU1_IPC_ISWR, (1 << device));
 }
 
 void SDH_MMC1_IRQHandler(void)
 {
-    MSG("%s\n", __func__);
     Send_IPC_IRQ(BFLB_IPC_DEVICE_SDHCI);
+}
+
+void UART2_IRQHandler(void)
+{
+    Send_IPC_IRQ(BFLB_IPC_DEVICE_UART2);
 }
 
 static void IPC_M0_IRQHandler(void)
@@ -172,16 +167,12 @@ static void IPC_M0_IRQHandler(void)
     int i;
     uint32_t irqStatus = IPC_M0_Get_Int_Raw_Status();
 
-    MSG("%s: irqStatus: 0x%08x\n", __func__, irqStatus);
-
     for (i = 0; i < sizeof(irqStatus) * 8; i++) {
-        if (irqStatus & (1 << i)) {
-            MSG("%s: device %d, enabling line %u\n", __func__, i, ipc_irqs[i]);
+        if (irqStatus & (1 << i))
             CPU_Interrupt_Enable(ipc_irqs[i]);
-        }
     }
 
-    IPC_M0_Clear_Int_By_Word(irqStatus);
+    BL_WR_REG(IPC0_BASE, IPC_CPU0_IPC_ICR, irqStatus);
 }
 
 #if 0
@@ -225,9 +216,11 @@ int main(void)
     IPC_M0_Int_Unmask_By_Word(0xffffffff);
     CPU_Interrupt_Enable(IPC_M0_IRQn);
 
-    MSG("registering SDH interrupt handler\r\n");
+    MSG("registering SDH, UART2 interrupt handler\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
+    Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
+    CPU_Interrupt_Enable(UART2_IRQn);
 
     csi_dcache_disable();
 #ifdef DUALCORE

@@ -372,7 +372,7 @@ BL_Err_Type UART_Init(UART_ID_Type uartId, UART_CFG_Type *uartCfg)
 #ifndef BFLB_USE_HAL_DRIVER
     Interrupt_Handler_Register(UART0_IRQn, UART0_IRQHandler);
     Interrupt_Handler_Register(UART1_IRQn, UART1_IRQHandler);
-    Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
+    //Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
     Interrupt_Handler_Register(UART3_IRQn, UART3_IRQHandler);
 #endif
     return SUCCESS;

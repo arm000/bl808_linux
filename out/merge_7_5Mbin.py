@@ -9,7 +9,7 @@ def bl_create_flash_default_data(length):
 
 def bl_gen_linux_flash_bin():
     whole_img_data = bl_create_flash_default_data((7680*1024)-335872)  # offset 0x52000
-    linux_dtb_file = "./bl808-sipeed-m1s.dtb" #0x51ff8000  64k
+    linux_dtb_file = "./bl808-pine64-ox64.dtb" #0x51ff8000  64k
     linux_opensbi_file = "./fw_jump.bin" # 0x3eff0000  64k
     linux_rootfs_file = "./squashfs_test.img"  # 0x58400000 4M
     linux_image_file = "./Image.lz4"  # 0x50000000 4M

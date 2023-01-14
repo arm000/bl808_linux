@@ -120,7 +120,7 @@ int uart_open(struct device *dev, uint16_t oflag)
 #endif
 #ifdef BSP_USING_UART2
         if (uart_device->id == UART2_ID) {
-            Interrupt_Handler_Register(UART2_IRQn, UART2_IRQ);
+            //Interrupt_Handler_Register(UART2_IRQn, UART2_IRQ);
         }
 #endif
 #ifdef BSP_USING_UART3
