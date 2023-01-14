@@ -30,6 +30,7 @@
 #include "bl808_gpio.h"
 #include "bl808_ipc.h"
 #include "sdh_reg.h"
+#include "bflb_ipc.h"
 
 extern void unlz4(const void *aSource, void *aDestination, uint32_t FileLen);
 
@@ -172,25 +173,19 @@ static void lp_ipc_handler(uint32_t src)
     MSG("%s: src: 0x%08x\r\n", __func__, src);
 }
 
+static uint32_t ipc_irqs[32] = {
+    [BFLB_IPC_DEVICE_SDHCI] = SDH_IRQn,
+    [BFLB_IPC_DEVICE_UART2] = UART2_IRQn,
+    0,
+};
+
 static void d0_ipc_handler(uint32_t src)
 {
-    int bit;
-
-    for (bit = 0; bit < 32; bit++)
+    for (int bit = 0; src != 0 && bit < 32; bit++)
     {
-        if ((src >> bit) & 1)
-        {
-            switch (bit)
-            {
-                case 0:
-                    CPU_Interrupt_Enable(SDH_IRQn);
-                    break;
+        if ((src >> bit) & 1) CPU_Interrupt_Enable(ipc_irqs[bit]);
 
-                case 1:
-                    CPU_Interrupt_Enable(UART2_IRQn);
-                    break;
-            }
-        }
+        src &= ~(1 << bit);
     }
 }
 #endif
