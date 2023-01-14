@@ -688,6 +688,7 @@ void IPC_Common_Interrupt_Handler(uint32_t irqStatus, ipcIntCallback *callBack[G
 void IPC_M0_IRQHandler(void)
 {
     uint32_t irqStatus;
+    MSG("%s: wrong handler!!\n", __func__);
     irqStatus = IPC_M0_Get_Int_Raw_Status();
     IPC_Common_Interrupt_Handler(irqStatus, m0IpcIntCbfArra);
     IPC_M0_Clear_Int_By_Word(irqStatus);

@@ -1356,6 +1356,7 @@ static void SDH_IntHandler(IRQn_Type intPeriph, SDH_Handle_Cfg_Type *handle)
 #if (defined BOOTROM) || (!defined BFLB_USE_HAL_DRIVER)
 void SDH_MMC1_IRQHandler(void)
 {
+    MSG("%s: wrong handler!!\n", __func__);
     SDH_IntHandler(SDH_IRQn, sdhHandle);
 }
 #endif
