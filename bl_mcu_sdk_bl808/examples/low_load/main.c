@@ -161,30 +161,11 @@ static void Send_IPC_IRQ(int device)
     BL_WR_REG(IPC2_BASE, IPC_CPU1_IPC_ISWR, (1 << device));
 }
 
-#if 0
 void SDH_MMC1_IRQHandler(void)
 {
     MSG("%s\n", __func__);
     Send_IPC_IRQ(BFLB_IPC_DEVICE_SDHCI);
 }
-#else
-void SDH_MMC1_IRQHandler(void)
-{
-    uint32_t intFlag, intMask;
-
-    CPU_Interrupt_Disable(SDH_IRQn);
-
-    intFlag = SDH_GetIntStatus();
-    intMask = SDH_GetIntEnableStatus();
-    intFlag &= intMask;
-
-    //    MSG("Triggering D0\r\n");
-    IPC_M0_Trigger_D0(IPC_GRP_INT_SRC_BIT0);
-
-    //    SDH_ClearIntStatus(intFlag);
-    return;
-}
-#endif
 
 static void IPC_M0_IRQHandler(void)
 {
