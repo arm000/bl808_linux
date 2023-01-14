@@ -24,7 +24,9 @@ build_linux()
     echo " "
     echo "================ build linux kernel ================"
     cd $SHELL_DIR/$LINUX_DIR
-    make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX bl808_defconfig
+    if [ ! -f .config ]; then
+        make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX bl808_defconfig
+    fi
     make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX Image -j$(nproc)
     make ARCH=riscv CROSS_COMPILE=$LINUX_CROSS_PREFIX dtbs -j$(nproc)
     echo " "
