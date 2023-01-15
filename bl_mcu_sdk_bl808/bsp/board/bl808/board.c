@@ -30,7 +30,7 @@
 #include "bl808_ef_cfg.h"
 #include "bl808_uhs_phy.h"
 
-#define D0_DEBUG 1
+#define D0_DEBUG 0
 
 #define WB_4MB_PSRAM   (1)
 #define UHS_32MB_PSRAM (2)
