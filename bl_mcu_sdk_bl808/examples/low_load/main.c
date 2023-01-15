@@ -31,6 +31,8 @@
 #include "bl808_ipc.h"
 #include "sdh_reg.h"
 #include "bflb_ipc.h"
+#include "pds_reg.h"
+#include "usb_reg.h"
 
 extern void unlz4(const void *aSource, void *aDestination, uint32_t FileLen);
 
@@ -204,6 +206,86 @@ static void dump_ipc(unsigned int base)
     MSG("CPU0 ISR  [0x%08x]: 0x%08x\n",  base + IPC_CPU0_IPC_ISR_OFFSET,   BL_RD_REG(base, IPC_CPU0_IPC_ISR));
 }
 #endif
+
+static void bflb_usb_phy_init(void)
+{
+    uint32_t regval;
+
+    /* USB_PHY_CTRL[3:2] reg_usb_phy_xtlsel=0                             */
+    /* 2000e504 = 0x40; #100; USB_PHY_CTRL[6] reg_pu_usb20_psw=1 (VCC33A) */
+    /* 2000e504 = 0x41; #500; USB_PHY_CTRL[0] reg_usb_phy_ponrst=1        */
+    /* 2000e500 = 0x20; #100; USB_CTL[0] reg_usb_sw_rst_n=0               */
+    /* 2000e500 = 0x22; #500; USB_CTL[1] reg_usb_ext_susp_n=1             */
+    /* 2000e500 = 0x23; #100; USB_CTL[0] reg_usb_sw_rst_n=1               */
+    /* #1.2ms; wait UCLK                                                  */
+    /* wait(soc616_b0.usb_uclk);                                          */
+
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_PHY_CTRL);
+    regval &= ~PDS_REG_USB_PHY_XTLSEL_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_PHY_CTRL, regval);
+
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_PHY_CTRL);
+    regval |= PDS_REG_PU_USB20_PSW_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_PHY_CTRL, regval);
+
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_PHY_CTRL);
+    regval |= PDS_REG_USB_PHY_PONRST_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_PHY_CTRL, regval);
+
+    /* greater than 5T */
+    arch_delay_us(1);
+
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_CTL);
+    regval &= ~PDS_REG_USB_SW_RST_N_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_CTL, regval);
+
+    /* greater than 5T */
+    arch_delay_us(1);
+
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_CTL);
+    regval |= PDS_REG_USB_EXT_SUSP_N_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_CTL, regval);
+
+    /* wait UCLK 1.2ms */
+    arch_delay_ms(3);
+
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_CTL);
+    regval |= PDS_REG_USB_SW_RST_N_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_CTL, regval);
+
+    arch_delay_ms(2);
+}
+
+static void usb_hc_low_level_init(void)
+{
+    uint32_t regval;
+
+    bflb_usb_phy_init();
+
+    /* enable device-A for host */
+    regval = BL_RD_REG(PDS_BASE, PDS_USB_CTL);
+    regval &= ~PDS_REG_USB_IDDIG_MSK;
+    BL_WR_REG(PDS_BASE, PDS_USB_CTL, regval);
+
+    regval = BL_RD_REG(USB_BASE, USB_OTG_CSR);
+    regval |= USB_A_BUS_DROP_HOV_MSK;
+    regval &= ~USB_A_BUS_REQ_HOV_MSK;
+    BL_WR_REG(USB_BASE, USB_OTG_CSR, regval);
+
+    arch_delay_ms(10);
+
+    /* enable vbus and bus control */
+    regval = BL_RD_REG(USB_BASE, USB_OTG_CSR);
+    regval &= ~USB_A_BUS_DROP_HOV_MSK;
+    regval |= USB_A_BUS_REQ_HOV_MSK;
+    BL_WR_REG(USB_BASE, USB_OTG_CSR, regval);
+
+    regval = BL_RD_REG(USB_BASE, USB_GLB_INT);
+    regval |= USB_MDEV_INT_MSK;
+    regval |= USB_MOTG_INT_MSK;
+    regval &= ~USB_MHC_INT_MSK;
+    BL_WR_REG(USB_BASE, USB_GLB_INT, regval);
+}
 #endif
 
 int main(void)
@@ -216,6 +298,9 @@ int main(void)
 
     MSG("psram clk init ok!\r\n");
     // MSG("m0 main! size_t:%d\r\n", sizeof(size_t));
+
+    MSG("initialize USB OTG to host mode\r\n");
+    usb_hc_low_level_init();
 
     MSG("registering IPC interrupt handler\r\n");
     Interrupt_Handler_Register(IPC_M0_IRQn, IPC_M0_IRQHandler);
