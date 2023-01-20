@@ -327,9 +327,7 @@ int main(void)
 	static int x = 0;
 	if ((x++ % 999999999) == 0) {
 	  {
-              //dump_ipc(IPC0_BASE);
-              //dump_ipc(IPC1_BASE);
-              MSG(".\n");
+              MSG(".\r\n");
 	  }
 	}
       }
