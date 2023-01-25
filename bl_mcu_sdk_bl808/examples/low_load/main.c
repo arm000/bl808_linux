@@ -33,6 +33,7 @@
 #include "bflb_ipc.h"
 #include "pds_reg.h"
 #include "usb_reg.h"
+#include "emac_reg.h"
 
 extern void unlz4(const void *aSource, void *aDestination, uint32_t FileLen);
 
@@ -146,11 +147,24 @@ static uint32_t ipc_irqs[32] = {
     [BFLB_IPC_DEVICE_SDHCI] = SDH_IRQn,
     [BFLB_IPC_DEVICE_UART2] = UART2_IRQn,
     [BFLB_IPC_DEVICE_USB]   = USB_IRQn,
+    [BFLB_IPC_DEVICE_EMAC]  = EMAC_IRQn,
     0,
 };
 
+static uint32_t irq_stats[32] = { 0 };
+
+static void print_irq_stats(void)
+{
+    MSG("IRQS: SDHCI: %d, UART2: %d, USB: %d, EMAC: %d\r\n",
+        irq_stats[BFLB_IPC_DEVICE_SDHCI],
+        irq_stats[BFLB_IPC_DEVICE_UART2],
+        irq_stats[BFLB_IPC_DEVICE_USB],
+        irq_stats[BFLB_IPC_DEVICE_EMAC]);
+}
+
 static void Send_IPC_IRQ(int device)
 {
+    irq_stats[device]++;
     CPU_Interrupt_Disable(ipc_irqs[device]);
     BL_WR_REG(IPC2_BASE, IPC_CPU1_IPC_ISWR, (1 << device));
 }
@@ -170,6 +184,11 @@ void USB_IRQHandler(void)
     Send_IPC_IRQ(BFLB_IPC_DEVICE_USB);
 }
 
+void EMAC_IRQHandler(void)
+{
+    Send_IPC_IRQ(BFLB_IPC_DEVICE_EMAC);
+}
+
 static void IPC_M0_IRQHandler(void)
 {
     int i;
@@ -182,6 +201,46 @@ static void IPC_M0_IRQHandler(void)
 
     BL_WR_REG(IPC0_BASE, IPC_CPU0_IPC_ICR, irqStatus);
 }
+
+#if 0
+static void dump_emac(void)
+{
+    MSG("GLB base: 0x%08x\r\n", GLB_BASE);
+    MSG("ETH_CFG0   [0x%08x]: 0x%08x ",    GLB_BASE + GLB_ETH_CFG0_OFFSET,  BL_RD_REG(GLB_BASE, GLB_ETH_CFG0));
+    MSG("CGEN_CFG2  [0x%08x]: 0x%08x\r\n", GLB_BASE + GLB_CGEN_CFG2_OFFSET, BL_RD_REG(GLB_BASE, GLB_CGEN_CFG2));
+    MSG("GPIO_CFG24 [0x%08x]: 0x%08x ",    GLB_BASE + GLB_GPIO_CFG24_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG24));
+    MSG("GPIO_CFG25 [0x%08x]: 0x%08x\r\n", GLB_BASE + GLB_GPIO_CFG25_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG25));
+    MSG("GPIO_CFG26 [0x%08x]: 0x%08x ",    GLB_BASE + GLB_GPIO_CFG26_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG26));
+    MSG("GPIO_CFG27 [0x%08x]: 0x%08x\r\n", GLB_BASE + GLB_GPIO_CFG27_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG27));
+    MSG("GPIO_CFG28 [0x%08x]: 0x%08x ",    GLB_BASE + GLB_GPIO_CFG28_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG28));
+    MSG("GPIO_CFG29 [0x%08x]: 0x%08x\r\n", GLB_BASE + GLB_GPIO_CFG29_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG29));
+    MSG("GPIO_CFG30 [0x%08x]: 0x%08x ",    GLB_BASE + GLB_GPIO_CFG30_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG30));
+    MSG("GPIO_CFG31 [0x%08x]: 0x%08x\r\n", GLB_BASE + GLB_GPIO_CFG31_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG31));
+    MSG("GPIO_CFG32 [0x%08x]: 0x%08x ",    GLB_BASE + GLB_GPIO_CFG32_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG32));
+    MSG("GPIO_CFG33 [0x%08x]: 0x%08x\r\n", GLB_BASE + GLB_GPIO_CFG33_OFFSET,  BL_RD_REG(GLB_BASE, GLB_GPIO_CFG33));
+
+    MSG("EMAC base: 0x%08x\r\n", EMAC_BASE);
+    MSG("MODE       [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_MODE_OFFSET,        BL_RD_REG(EMAC_BASE, EMAC_MODE));
+    MSG("INT_SOURCE [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_INT_SOURCE_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_INT_SOURCE));
+    MSG("INT_MASK   [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_INT_MASK_OFFSET,    BL_RD_REG(EMAC_BASE, EMAC_INT_MASK));
+    MSG("IPGT       [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_IPGT_OFFSET,        BL_RD_REG(EMAC_BASE, EMAC_IPGT));
+    MSG("PACKETLEN  [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_PACKETLEN_OFFSET,   BL_RD_REG(EMAC_BASE, EMAC_PACKETLEN));
+    MSG("COLLCONFIG [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_COLLCONFIG_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_COLLCONFIG));
+    MSG("TX_BD_NUM  [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_TX_BD_NUM_OFFSET,   BL_RD_REG(EMAC_BASE, EMAC_TX_BD_NUM));
+    MSG("TX_BD_NUM  [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_TX_BD_NUM_OFFSET,   BL_RD_REG(EMAC_BASE, EMAC_TX_BD_NUM));
+    MSG("MIIMODE    [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_MIIMODE_OFFSET,     BL_RD_REG(EMAC_BASE, EMAC_MIIMODE));
+    MSG("MIICOMMAND [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_MIICOMMAND_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_MIICOMMAND));
+    MSG("MIIADDRESS [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_MIIADDRESS_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_MIIADDRESS));
+    MSG("MIITX_DATA [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_MIITX_DATA_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_MIITX_DATA));
+    MSG("MIIRX_DATA [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_MIIRX_DATA_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_MIIRX_DATA));
+    MSG("MIISTATUS  [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_MIISTATUS_OFFSET,   BL_RD_REG(EMAC_BASE, EMAC_MIISTATUS));
+    MSG("MAC_ADDR0  [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_MAC_ADDR0_OFFSET,   BL_RD_REG(EMAC_BASE, EMAC_MAC_ADDR0));
+    MSG("MAC_ADDR1  [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_MAC_ADDR1_OFFSET,   BL_RD_REG(EMAC_BASE, EMAC_MAC_ADDR1));
+    MSG("HASH0_ADDR [0x%08x]: 0x%08x ",    EMAC_BASE + EMAC_HASH0_ADDR_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_HASH0_ADDR));
+    MSG("HASH1_ADDR [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_HASH1_ADDR_OFFSET,  BL_RD_REG(EMAC_BASE, EMAC_HASH1_ADDR));
+    MSG("TXCTRL     [0x%08x]: 0x%08x\r\n", EMAC_BASE + EMAC_TXCTRL_OFFSET,      BL_RD_REG(EMAC_BASE, EMAC_TXCTRL));
+}
+#endif
 
 #if 0
 static void dump_ipc(unsigned int base)
@@ -286,6 +345,28 @@ static void usb_hc_low_level_init(void)
     regval &= ~USB_MHC_INT_MSK;
     BL_WR_REG(USB_BASE, USB_GLB_INT, regval);
 }
+
+static void emac_low_level_init(void)
+{
+    GLB_GPIO_Cfg_Type gpio_cfg;
+    int pin;
+
+    GLB_Set_EMAC_CLK(1);
+    GLB_Set_ETH_REF_O_CLK_Sel(GLB_ETH_REF_CLK_OUT_OUTSIDE_50M);
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_EMAC);
+
+    for (pin = GLB_GPIO_PIN_24; pin <= GLB_GPIO_PIN_33; pin++) {
+        gpio_cfg.drive = 1;
+        gpio_cfg.smtCtrl = 1;
+        gpio_cfg.outputMode = 0;
+        gpio_cfg.gpioMode = GPIO_MODE_AF;
+        gpio_cfg.pullType = GPIO_PULL_UP;
+        gpio_cfg.gpioPin = pin;
+        gpio_cfg.gpioFun = GPIO_FUN_ETHER_MAC;
+        GLB_GPIO_Init(&gpio_cfg);
+    }
+}
+
 #endif
 
 int main(void)
@@ -302,18 +383,25 @@ int main(void)
     MSG("initialize USB OTG to host mode\r\n");
     usb_hc_low_level_init();
 
+    MSG("initialize EMAC\r\n");
+    emac_low_level_init();
+
     MSG("registering IPC interrupt handler\r\n");
     Interrupt_Handler_Register(IPC_M0_IRQn, IPC_M0_IRQHandler);
     IPC_M0_Int_Unmask_By_Word(0xffffffff);
     CPU_Interrupt_Enable(IPC_M0_IRQn);
 
-    MSG("registering SDH, UART2, USB interrupt handlers\r\n");
+    MSG("registering SDH, UART2, USB, EMAC interrupt handlers\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
     Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
     Interrupt_Handler_Register(USB_IRQn, USB_IRQHandler);
+    Interrupt_Handler_Register(EMAC_IRQn, EMAC_IRQHandler);
+    Interrupt_Handler_Register(EMAC2_IRQn, EMAC_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
     CPU_Interrupt_Enable(UART2_IRQn);
     CPU_Interrupt_Enable(USB_IRQn);
+    CPU_Interrupt_Enable(EMAC_IRQn);
+    CPU_Interrupt_Enable(EMAC2_IRQn);
 
     csi_dcache_disable();
 #ifdef DUALCORE
@@ -327,7 +415,7 @@ int main(void)
 	static int x = 0;
 	if ((x++ % 999999999) == 0) {
 	  {
-              MSG(".\r\n");
+              print_irq_stats();
 	  }
 	}
       }
