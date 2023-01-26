@@ -143,6 +143,7 @@ void linux_load()
 static uint32_t ipc_irqs[32] = {
     [BFLB_IPC_DEVICE_SDHCI] = SDH_IRQn,
     [BFLB_IPC_DEVICE_UART2] = UART2_IRQn,
+    [BFLB_IPC_DEVICE_GPIO] = GPIO_INT0_IRQn,
     0,
 };
 
@@ -154,12 +155,20 @@ static void Send_IPC_IRQ(int device)
 
 void SDH_MMC1_IRQHandler(void)
 {
+    bflb_platform_printf("S");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_SDHCI);
 }
 
 void UART2_IRQHandler(void)
 {
+    bflb_platform_printf("U");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_UART2);
+}
+
+void GPIO_IRQHandler(void)
+{
+    bflb_platform_printf("G");
+    Send_IPC_IRQ(BFLB_IPC_DEVICE_GPIO);
 }
 
 static void IPC_M0_IRQHandler(void)
@@ -216,11 +225,13 @@ int main(void)
     IPC_M0_Int_Unmask_By_Word(0xffffffff);
     CPU_Interrupt_Enable(IPC_M0_IRQn);
 
-    MSG("registering SDH, UART2 interrupt handler\r\n");
+    MSG("registering SDH, UART2, GPIO interrupt handlers\r\n");
     Interrupt_Handler_Register(SDH_IRQn, SDH_MMC1_IRQHandler);
     Interrupt_Handler_Register(UART2_IRQn, UART2_IRQHandler);
+    Interrupt_Handler_Register(GPIO_INT0_IRQn, GPIO_IRQHandler);
     CPU_Interrupt_Enable(SDH_IRQn);
     CPU_Interrupt_Enable(UART2_IRQn);
+    CPU_Interrupt_Enable(GPIO_INT0_IRQn);
 
     csi_dcache_disable();
 #ifdef DUALCORE
