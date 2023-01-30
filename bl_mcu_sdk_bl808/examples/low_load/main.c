@@ -148,7 +148,7 @@ static uint32_t ipc_irqs[32] = {
     [BFLB_IPC_DEVICE_UART2] = UART2_IRQn,
     [BFLB_IPC_DEVICE_USB]   = USB_IRQn,
     [BFLB_IPC_DEVICE_EMAC]  = EMAC_IRQn,
-    [BFLB_IPC_DEVICE_GPIO] = GPIO_INT0_IRQn,
+    [BFLB_IPC_DEVICE_GPIO]  = GPIO_INT0_IRQn,
     0,
 };
 
@@ -156,11 +156,12 @@ static uint32_t irq_stats[32] = { 0 };
 
 static void print_irq_stats(void)
 {
-    MSG("IRQS: SDHCI: %d, UART2: %d, USB: %d, EMAC: %d\r\n",
+    MSG("IRQS: SDHCI: %d, UART2: %d, USB: %d, EMAC: %d, GPIO: %d\r\n",
         irq_stats[BFLB_IPC_DEVICE_SDHCI],
         irq_stats[BFLB_IPC_DEVICE_UART2],
         irq_stats[BFLB_IPC_DEVICE_USB],
-        irq_stats[BFLB_IPC_DEVICE_EMAC]);
+        irq_stats[BFLB_IPC_DEVICE_EMAC],
+        irq_stats[BFLB_IPC_DEVICE_GPIO]);
 }
 
 static void Send_IPC_IRQ(int device)
@@ -172,31 +173,26 @@ static void Send_IPC_IRQ(int device)
 
 void SDH_MMC1_IRQHandler(void)
 {
-    bflb_platform_printf("S");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_SDHCI);
 }
 
 void UART2_IRQHandler(void)
 {
-    bflb_platform_printf("U");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_UART2);
 }
 
 void USB_IRQHandler(void)
 {
-    bflb_platform_printf("B");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_USB);
 }
 
 void EMAC_IRQHandler(void)
 {
-    bflb_platform_printf("E");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_EMAC);
 }
 
 void GPIO_IRQHandler(void)
 {
-    bflb_platform_printf("G");
     Send_IPC_IRQ(BFLB_IPC_DEVICE_GPIO);
 }
 
